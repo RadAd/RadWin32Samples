@@ -11,7 +11,7 @@ using namespace rad;
 void DrawBitmap(DevContext& DC, const Bitmap& bmp, POINT p, DWORD RasterOp = SRCCOPY)
 {
     SIZE s = bmp.GetSize();
-    CMemDC mdc(DC);
+    MemDC mdc(DC);
     TempSelectObject selectbmp(mdc, bmp);
     DC.BitBlt(p.x, p.y, s.cx, s.cy, mdc, 0, 0, RasterOp);
 }
@@ -19,7 +19,7 @@ void DrawBitmap(DevContext& DC, const Bitmap& bmp, POINT p, DWORD RasterOp = SRC
 void DrawBitmapCentered(DevContext& DC, const Bitmap& bmp, POINT p, DWORD RasterOp = SRCCOPY)
 {
     SIZE s = bmp.GetSize();
-    CMemDC mdc(DC);
+    MemDC mdc(DC);
     TempSelectObject selectbmp(mdc, bmp);
     DC.BitBlt(p.x - s.cx/2, p.y - s.cy/2, s.cx, s.cy, mdc, 0, 0, RasterOp);
 }
