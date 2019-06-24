@@ -6,7 +6,44 @@
 
 #include <WinUser.h>
 
+#include "resource.h"
+
 using namespace rad;
+
+class MyMDIFrame : public MDIFrame
+{
+public:
+    static MyMDIFrame* Create(HINSTANCE hInstance)
+    {
+        MyMDIFrame* w = new MyMDIFrame();
+        w->CreateWnd(hInstance, _T("MDI App"));
+        return w;
+    }
+
+    RegClass GetMDIFrameReg(HINSTANCE _hInstance) override
+    {
+        RegClass rc = MDIFrame::GetMDIFrameReg(_hInstance);
+        rc.SetMenu(IDR_MENU1);
+        return rc;
+    }
+
+protected:
+    virtual LRESULT OnCommand(WORD NotifyCode, WORD ID, HWND hWnd) override
+    {
+        switch (ID)
+        {
+        case ID_FILE_EXIT:
+            PostQuitMessage(0);
+            break;
+
+        case ID_WINDOW_NEW:
+            //(new Window())->CreateMDIChildWnd(_T("MDI Child New"), this);
+            CreateChild(new Window(), _T("MDI Child New"));
+            break;
+        }
+        return MDIFrame::OnCommand(NotifyCode, ID, hWnd);
+    }
+};
 
 int CALLBACK WinMain(
     _In_ HINSTANCE hInstance,
@@ -15,18 +52,14 @@ int CALLBACK WinMain(
     _In_ int       nCmdShow
 )
 {
-    MDIFrame* hw = new MDIFrame();
-    hw->CreateWnd(hInstance, _T("MDI App"));
-    hw->ShowWindow(nCmdShow);
+    MyMDIFrame* f = MyMDIFrame::Create(hInstance);
+    f->ShowWindow(nCmdShow);
 
-    (new Window())->CreateMDIChildWnd(_T("MDI Child A"), hw);
+    (new Window())->CreateMDIChildWnd(_T("MDI Child A"), f);
 
-    //CreateWnd(new Window(), _T("Window 1"));
-    //CreateMDIChild(hw, new Window(), _T("MDI Child 1"));
+    f->CreateChild(new Window(), _T("MDI Child 1"));
+    f->CreateChild(new Window(), _T("MDI Child 2"));
+    f->CreateChild(new Window(), _T("MDI Child 3"));
 
-    hw->CreateChild(new Window(), _T("MDI Child 1"));
-    hw->CreateChild(new Window(), _T("MDI Child 2"));
-    hw->CreateChild(new Window(), _T("MDI Child 3"));
-
-    return (int) DoMessageLoop(hw->GetHWND(), hw->GetMDIClient().GetHWND(), NULL);
+    return (int) DoMessageLoop(f->GetHWND(), f->GetMDIClient().GetHWND(), NULL);
 }
