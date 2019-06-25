@@ -36,9 +36,25 @@ protected:
             PostQuitMessage(0);
             break;
 
+        case ID_HELP_ABOUT:
+            MessageBox(*this, _T("RadWin32 MDI Sample App"), _T("MDI App"), MB_OK | MB_ICONINFORMATION);
+            break;
+
         case ID_WINDOW_NEW:
             //(new Window())->CreateMDIChildWnd(_T("MDI Child New"), this);
             CreateChild(new Window(), _T("MDI Child New"));
+            break;
+
+        case ID_WINDOW_CASCADE:
+            CascadeWindows();
+            break;
+
+        case ID_WINDOW_TILEHORIZONTALLY:
+            TileWindows(MDITILE_SKIPDISABLED | MDITILE_HORIZONTAL);
+            break;
+
+        case ID_WINDOW_TILEVERTICALLY:
+            TileWindows(MDITILE_SKIPDISABLED | MDITILE_VERTICAL);
             break;
         }
         return MDIFrame::OnCommand(NotifyCode, ID, hWnd);
