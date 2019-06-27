@@ -17,12 +17,15 @@ using namespace rad;
 
 LRESULT CALLBACK MDIChildSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR /*uIdSubclass*/, DWORD_PTR /*dwRefData*/)
 {
-    if (uMsg == WM_MDIACTIVATE)
+    LRESULT ret = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    switch (uMsg)
     {
+    case WM_MDIACTIVATE:
         if (hWnd == (HWND) lParam)
             SendMessage(GetParent(hWnd), WM_PARENTNOTIFY, MAKELONG(WM_MDIACTIVATE, GetWindowID(hWnd)), (LPARAM) hWnd);
+        break;
     }
-    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    return ret;
 }
 
 LRESULT CALLBACK MDIClientSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR /*uIdSubclass*/, DWORD_PTR /*dwRefData*/)
@@ -31,19 +34,43 @@ LRESULT CALLBACK MDIClientSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     {
         switch (LOWORD(wParam))
         {
+        case WM_DESTROY:
+            SendMessage(GetParent(hWnd), WM_PARENTNOTIFY, MAKELONG(WM_MDIDESTROY, HIWORD(wParam)), lParam);
+            break;
+        }
+    }
+    LRESULT ret =  DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    if (uMsg == WM_PARENTNOTIFY)
+    {
+        switch (LOWORD(wParam))
+        {
         case WM_CREATE:
             SendMessage(GetParent(hWnd), WM_PARENTNOTIFY, MAKELONG(WM_MDICREATE, HIWORD(wParam)), lParam);
             SetWindowSubclass((HWND) lParam, MDIChildSubclass, 0, 0);
-            break;
-        case WM_DESTROY:
-            SendMessage(GetParent(hWnd), WM_PARENTNOTIFY, MAKELONG(WM_MDIDESTROY, HIWORD(wParam)), lParam);
             break;
         case WM_MDIACTIVATE:
             SendMessage(GetParent(hWnd), WM_PARENTNOTIFY, wParam, lParam);
             break;
         }
     }
-    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    return ret;
+}
+
+LRESULT CALLBACK MDIChildTabSubclass(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR /*uIdSubclass*/, DWORD_PTR /*dwRefData*/)
+{
+    switch (uMsg)
+    {
+    case WM_SYSCOMMAND:
+        // TODO If in tab mode
+        switch (wParam)
+        {
+        case SC_RESTORE:
+            return FALSE;
+        }
+        break;
+    }
+    LRESULT ret = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    return ret;
 }
 
 class MDITabChain : public WindowChain
@@ -80,6 +107,13 @@ protected:
         case WM_MDICREATE:
             {
                 WindowProxy c((HWND) lParam);
+
+                DWORD style = c.GetStyle();
+                style &= ~(WS_MINIMIZEBOX);
+                c.SetStyle(style);
+
+                SetWindowSubclass(c.GetHWND(), MDIChildTabSubclass, 0, 0);
+
                 TCHAR title[1024];
                 c.GetWindowText(title);
                 TCITEM item = {};
@@ -126,6 +160,14 @@ protected:
         mdiclient.SetWindowPos(NULL, r, SWP_NOACTIVATE | SWP_NOZORDER);
     }
 
+    void OnInitMenuPopup(Window& /*Window*/, HMENU hMenu, UINT Pos, BOOL SystemMenu)
+    {
+        if (Pos == 0 && !SystemMenu)
+        {
+            EnableMenuItem(hMenu, SC_RESTORE, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
+        }
+    }
+
     LRESULT OnMessage(Window* Window, UINT Message, WPARAM wParam, LPARAM lParam) override
     {
         switch (Message)
@@ -133,6 +175,7 @@ protected:
         case WM_CREATE:         OnCreate(*Window, (LPCREATESTRUCT) lParam); break;
         case WM_NOTIFY:         OnNotify(*Window, (int) wParam, (LPNMHDR) lParam); break;
         case WM_PARENTNOTIFY:   OnParentNotify(*Window, LOWORD(wParam), HIWORD(wParam), lParam); break;
+        case WM_INITMENUPOPUP:  OnInitMenuPopup(*Window, (HMENU) wParam, (UINT) LOWORD(lParam), (BOOL) HIWORD(lParam));
         }
         LRESULT ret =  WindowChain::OnMessage(Window, Message, wParam, lParam);
         switch (Message)
@@ -273,7 +316,7 @@ protected:
 
         case ID_WINDOW_NEW:
             //(new Window())->CreateMDIChildWnd(_T("MDI Child New"), this);
-            CreateMDIChild(new Window(), (HINSTANCE) GetWindowLongPtr(GWLP_HINSTANCE), _T("MDI Child New"));
+            CreateMDIChild(new Window(), GetInstance(), _T("MDI Child New"));
             break;
 
         case ID_WINDOW_CASCADE:
